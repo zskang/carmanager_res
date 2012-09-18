@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabletech.carapplydispatch.mapper.CarApplyDispatchMapper">
+
+	<!-- 修改调单号 -->
+	<update id="updateDispCode" parameterType="hashmap">
+		update
+		CAR_APPLY_DISPATCH set
+		adisp_code=#{adisp_code,jdbcType=VARCHAR},disp_state=1
+		,disp_date=sysdate
+		where
+		id=#{id,jdbcType=VARCHAR}
+	</update>
+	<!-- 获取调单号信息 to_date(#{Timer,jdbcType=VARCHAR},'yyyy-MM-dd HH24:mi:ss') -->
+	<select id="GeneralDispCode" resultType="String" parameterType="hashmap">
+		select max(adisp_code)
+		from CAR_APPLY_DISPATCH where apply_date between
+		sysdate-10 and
+		sysdate
+	</select>
+	<update id="updateState" parameterType="hashmap">
+	update CAR_APPLY_DISPATCH set DISP_STATE=#{dispState,jdbcType=VARCHAR} where id=#{id,jdbcType=VARCHAR}
+	</update>
+
+	<select id="selectCarDispatchByDispCode" parameterType="java.lang.String"
+		resultType="com.cabletech.carapplydispatch.entity.CarApplyDispatchEntity">
+		select d.*,c.carno from CAR_APPLY_DISPATCH d ,car_info c where c.id=d.car_no and
+		d.adisp_code=#{adisp_code,jdbcType=VARCHAR} and d.disp_date between
+		sysdate-10 and sysdate
+	</select>
+	<!-- 根据车ID 获取车电话号码 -->
+	<select id="getCarManPhone" resultType="String" parameterType="hashmap">
+		select ci.phone from
+		car_info ci where ci.id=#{id,jdbcType=VARCHAR}
+	</select>
+
+	<!-- 添加车辆调度信息 -->
+	<insert id="insertCarApplyDispatch"
+		parameterType="com.cabletech.carapplydispatch.entity.CarApplyDispatchEntity">
+		INSERT INTO CAR_APPLY_DISPATCH (
+		id,adisp_code,users,phone,use_start_date,
+		use_end_date,use_reason,apply_date,
+		disp_state,car_no,disp_date,dispatcher,
+		approver,approve_date,approve_result,
+		approve_remark,recall_remark,
+		recall_date,recall_person,
+		applicant
+		)VALUES(
+		#{id,jdbcType=VARCHAR},
+		#{adisp_code,jdbcType=VARCHAR},
+		#{users,jdbcType=VARCHAR},
+		#{phone,jdbcType=VARCHAR},
+		to_date(#{use_start_date,jdbcType=VARCHAR},'yyyy-MM-dd HH24:mi:ss'),
+		to_date(#{use_end_date,jdbcType=VARCHAR},'yyyy-MM-dd HH24:mi:ss'),
+		#{use_reason,jdbcType=VARCHAR},
+		to_date(#{apply_date,jdbcType=VARCHAR},'yyyy-MM-dd HH24:mi:ss'),
+		#{disp_state,jdbcType=VARCHAR},
+		#{car_no,jdbcType=VARCHAR},
+		to_date(#{disp_date,jdbcType=VARCHAR},'yyyy-MM-dd HH24:mi:ss'),
+		#{dispatcher,jdbcType=VARCHAR},
+		#{approver,jdbcType=VARCHAR},
+		to_date(#{approve_date,jdbcType=VARCHAR},'yyyy-MM-dd HH24:mi:ss'),
+		#{approve_result,jdbcType=VARCHAR},
+		#{approve_remark,jdbcType=VARCHAR},
+		#{recall_remark,jdbcType=VARCHAR},
+		to_date(#{recall_date,jdbcType=VARCHAR},'yyyy-MM-dd HH24:mi:ss'),
+		#{recall_person,jdbcType=VARCHAR},
+		#{applicant,jdbcType=VARCHAR}
+		)
+	</insert>
+
+
+	<!-- 手机短信 提交 添加车辆调度信息 -->
+	<insert id="insertCarApplyDispatchByMobile"
+		parameterType="com.cabletech.carapplydispatch.entity.CarApplyDispatchEntity">
+		INSERT INTO CAR_APPLY_DISPATCH (
+		id,phone,use_start_date,
+		use_end_date,use_reason,apply_date,
+		disp_state,
+		applicant,users
+		)VALUES(
+		#{id,jdbcType=VARCHAR},
+		#{phone,jdbcType=VARCHAR},
+		sysdate,
+		sysdate+1/12,
+		#{use_reason,jdbcType=VARCHAR},
+		to_date(#{apply_date,jdbcType=VARCHAR},'yyyy-MM-dd HH24:mi:ss'),
+		#{disp_state,jdbcType=VARCHAR},
+		#{applicant,jdbcType=VARCHAR},
+		#{users,jdbcType=VARCHAR}
+		
+		)
+	</insert>
+
+
+
+	<!-- 查询未调度列表 -->
+	<select id="selectCarApplyDispatch" resultType="hashmap"
+		parameterType="hashmap">
+		select
+		cad.id,cad.adisp_code,cad.users,cad.phone,to_char(cad.use_start_date,'yyyy-MM-dd
+		HH24:mi:ss') use_start_date,
+		to_char(cad.use_end_date,'yyyy-MM-dd
+		HH24:mi:ss')
+		use_end_date,cad.use_reason,to_char(cad.apply_date,'yyyy-MM-dd
+		HH24:mi:ss') apply_date,
+		cad.disp_state,cad.car_no,to_char(cad.disp_date,'yyyy-MM-dd
+		HH24:mi:ss') disp_date,cad.dispatcher,
+		cad.approver,to_char(cad.approve_date,'yyyy-MM-dd HH24:mi:ss')
+		approve_date,cad.approve_result,
+		cad.approve_remark,cad.recall_remark,
+		to_char(cad.recall_date,'yyyy-MM-dd HH24:mi:ss')
+		recall_date,cad.recall_person,
+		cad.applicant from CAR_APPLY_DISPATCH
+		cad where cad.disp_state in ('0','3')
+		<if test="applicantList!=null ">
+			and cad.applicant = any
+			<foreach collection="applicantList" item="point" open="("
+				separator="," close=")">
+				#{point}
+			</foreach>
+		</if>
+		order by cad.apply_date desc
+	</select>
+
+	<!-- 查询已调度列表 -->
+	<select id="selectCarApplyDispatched" resultType="hashmap"
+		parameterType="hashmap">
+		select
+		cad.id,cad.adisp_code,cad.users,cad.phone,to_char(cad.use_start_date,'yyyy-MM-dd
+		HH24:mi:ss') use_start_date,
+		to_char(cad.use_end_date,'yyyy-MM-dd
+		HH24:mi:ss')
+		use_end_date,cad.use_reason,to_char(cad.apply_date,'yyyy-MM-dd
+		HH24:mi:ss') apply_date,
+		cad.disp_state,car.carno,to_char(cad.disp_date,'yyyy-MM-dd
+		HH24:mi:ss') disp_date,cad.dispatcher,
+		cad.approver,to_char(cad.approve_date,'yyyy-MM-dd HH24:mi:ss')
+		approve_date,cad.approve_result,
+		cad.approve_remark,cad.recall_remark,
+		to_char(cad.recall_date,'yyyy-MM-dd HH24:mi:ss')
+		recall_date,cad.recall_person,
+		cad.applicant from CAR_APPLY_DISPATCH
+		cad join car_info car on car.id=cad.car_no where cad.disp_state in
+		('1','2','4')
+		<if test="applicant!=null and applicant!=''">
+			and cad.applicant=#{applicant,jdbcType=VARCHAR}
+		</if>
+		<if test="(start!=null and start!='') and (end==null or end =='')">
+			and
+			cad.use_start_date>=to_date(#{start,jdbcType=VARCHAR},'yyyy-MM-dd
+			HH24:mi:ss')
+		</if>
+		<if test="(start==null or start=='') and (end!=null and end !='')">
+			and to_date(#{end,jdbcType=VARCHAR},'yyyy-MM-dd
+			HH24:mi:ss')>=cad.use_end_date
+		</if>
+		<if test="(start!=null and start!='') and (end!=null and end !='')">
+			and
+			cad.use_start_date>=to_date(#{start,jdbcType=VARCHAR},'yyyy-MM-dd
+			HH24:mi:ss')
+			and to_date(#{end,jdbcType=VARCHAR},'yyyy-MM-dd
+			HH24:mi:ss')>=cad.use_end_date
+		</if>
+		<if test="carno!=null and carno!=''">
+			and cad.car_no like '%'||#{carno,jdbcType=VARCHAR}||'%'
+		</if>
+		<if test="dispstateList!=null">
+			and cad.disp_state in
+			<foreach collection="dispstateList" item="disp" open="("
+				separator="," close=")">
+				#{disp}
+			</foreach>
+		</if>
+		<if test="applicantList!=null and  applicantList!=''">
+			and cad.applicant = any
+			<foreach collection="applicantList" item="point" open="("
+				separator="," close=")">
+				#{point}
+			</foreach>
+		</if>
+		order by cad.apply_date desc
+	</select>
+
+	<!-- 通过人员的id得到人员的手机号码 -->
+	<select id="selectPhoneById" parameterType="java.lang.String"
+		resultType="java.lang.String">
+		SELECT T.phone FROM VIEW_USERINFO T WHERE
+		T.sid=#{userid,jdbcType=VARCHAR}
+	</select>
+	<!-- 通过人员的手机号码得到人员的UserId -->
+	<select id="selectUserByPhone" parameterType="java.lang.String"
+		resultType="java.lang.String">
+		SELECT T.sid FROM VIEW_USERINFO T WHERE
+		T.phone=#{phone,jdbcType=VARCHAR} and T.orgtype='2'
+	</select>
+	<!-- 通过人员的手机号码得到人员的UserId -->
+	<select id="selectUserByPhone2" parameterType="java.lang.String"
+		resultType="hashmap">
+		SELECT T.* FROM VIEW_USERINFO T WHERE
+		T.phone=#{phone,jdbcType=VARCHAR} and T.orgtype='2'
+	</select>
+
+	<!-- 查询空闲的状态为正常的车辆 select id,carno from car_info t where t.usestate='0' 
+		and t.carstate='0' -->
+	<select id="selectUnusedCar" parameterType="hashmap"
+		resultType="hashmap">
+		select t.id, t.carno
+		from car_info t
+		where t.id not in (select cp.car_no
+		from car_apply_dispatch cp
+		where cp.car_no is not null and cp.disp_state in (1, 5))
+		and t.usestate = '0'
+		and t.carstate = '0'
+		<if test="orgList!=null and orgList!=''">
+			and t.contractorid in
+			<foreach collection="orgList" open="(" separator="," item="point"
+				close=")">
+				#{point,jdbcType=VARCHAR}
+			</foreach>
+		</if>
+	</select>
+
+	<!-- 通过调度信息id得到调度信息 -->
+	<select id="selectCarDispatchById" parameterType="java.lang.String"
+		resultType="com.cabletech.carapplydispatch.entity.CarApplyDispatchEntity">
+		select
+		cad.id,cad.adisp_code,cad.users,cad.phone,to_char(cad.use_start_date,'yyyy-MM-dd
+		HH24:mi:ss') use_start_date,
+		to_char(cad.use_end_date,'yyyy-MM-dd
+		HH24:mi:ss')
+		use_end_date,cad.use_reason,to_char(cad.apply_date,'yyyy-MM-dd
+		HH24:mi:ss') apply_date,
+		cad.disp_state,cad.car_no,to_char(cad.disp_date,'yyyy-MM-dd
+		HH24:mi:ss') disp_date,cad.dispatcher,
+		cad.approver,to_char(cad.approve_date,'yyyy-MM-dd HH24:mi:ss')
+		approve_date,cad.approve_result,
+		cad.approve_remark,cad.recall_remark,
+		to_char(cad.recall_date,'yyyy-MM-dd HH24:mi:ss')
+		recall_date,cad.recall_person,
+		cad.applicant,vu.username from
+		CAR_APPLY_DISPATCH
+		cad join view_userinfo vu on cad.applicant=vu.sid
+		where
+		cad.id=#{id,jdbcType=VARCHAR}
+	</select>
+
+	<!-- 修改调度信息表 adisp_code=#{adisp_code,jdbcType=VARCHAR}, -->
+	<update id="updateCarDispatch"
+		parameterType="com.cabletech.carapplydispatch.entity.CarApplyDispatchEntity">
+		update CAR_APPLY_DISPATCH set 
+		users=#{users,jdbcType=VARCHAR},
+		phone=#{phone,jdbcType=VARCHAR},
+		use_start_date=to_date(#{use_start_date,jdbcType=VARCHAR},'yyyy-MM-dd
+		HH24:mi:ss'),
+		use_end_date=to_date(#{use_end_date,jdbcType=VARCHAR},'yyyy-MM-dd
+		HH24:mi:ss'),
+		use_reason=#{use_reason,jdbcType=VARCHAR},
+		apply_date=to_date(#{apply_date,jdbcType=VARCHAR},'yyyy-MM-dd
+		HH24:mi:ss'),
+		disp_state=#{disp_state,jdbcType=VARCHAR},
+		car_no=#{car_no,jdbcType=VARCHAR},
+		disp_date=to_date(#{disp_date,jdbcType=VARCHAR},'yyyy-MM-dd
+		HH24:mi:ss'),
+		dispatcher=#{dispatcher,jdbcType=VARCHAR},
+		approver=#{approver,jdbcType=VARCHAR},
+		approve_date=to_date(#{approve_date,jdbcType=VARCHAR},'yyyy-MM-dd
+		HH24:mi:ss'),
+		approve_result=#{approve_result,jdbcType=VARCHAR},
+		approve_remark=#{approve_remark,jdbcType=VARCHAR},
+		recall_remark=#{recall_remark,jdbcType=VARCHAR},
+		recall_date=to_date(#{recall_date,jdbcType=VARCHAR},'yyyy-MM-dd
+		HH24:mi:ss'),
+		recall_person=#{recall_person,jdbcType=VARCHAR},
+		applicant=#{applicant,jdbcType=VARCHAR}
+		where
+		id=#{id,jdbcType=VARCHAR}
+	</update>
+	<!-- 通过表连接的到数据 -->
+	<select id="selectCarAndCarDispatche"
+		resultType="com.cabletech.carapplydispatch.entity.CarAndCardispatchEntity">
+		select cad.id id,ci.carno car_no,ci.mentor ,ci.phone
+		mentorphone,cad.users,
+		cad.phone ,
+		to_char(cad.use_start_date,'yyyy-MM-dd HH24:mi:ss') use_start_date
+		,to_char(cad.use_end_date,'yyyy-MM-dd HH24:mi:ss') use_end_date ,
+		cad.use_reason from car_apply_dispatch cad left join car_info ci
+		on
+		cad.car_no=ci.id where cad.id=#{id,jdbcType=VARCHAR}
+	</select>
+	<!-- 修改车辆状态为任务途中 -->
+	<update id="updateCarUsed" parameterType="java.lang.String">
+		update car_info t set
+		t.usestate='1' where t.carno=#{carno,jdbcType=VARCHAR}
+	</update>
+
+	<!-- 修改车辆状态为空闲 -->
+	<update id="updateCarUnused" parameterType="java.lang.String">
+		update car_info t set
+		t.usestate='0' where t.carno=#{carno,jdbcType=VARCHAR}
+	</update>	
+	
+	<!-- 修改车辆状态为空闲 -->
+	<update id="updCarUnusedById" parameterType="java.lang.String">
+		update car_info t set
+		t.usestate='0' where t.id=#{carno,jdbcType=VARCHAR}
+	</update>
+</mapper>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabletech.carmanager.mapper.carlease.CarLeaseMapper">
+
+	<!-- 用户：移动，查询租赁车辆信息 -->
+	<select id="getCarLeaseByMobile" resultType="hashmap" parameterType="hashmap" flushCache="true">
+		select c.id, c.carno, c.cartype, c.carstate, c.mentor, c.phone, c.simid, c.oilwear, c.contractorid, a.userorgid, a.userdeptid 
+		from car_info c, car_assign a where c.id = a.carid and c.status is null and a.status is null 
+		
+		<if test="carno != null and carno != ''">
+			and c.carno like '%' || #{carno} || '%'
+		</if>
+		<if test="cartype != null and cartype != ''">
+			and c.cartype = #{cartype}
+		</if>
+		<if test="mentor != null and mentor != ''">
+			and c.mentor = #{mentor}
+		</if>
+		<if test="carstate != null and carstate != ''">
+			and c.carstate = #{carstate}
+		</if>
+		<if test="contractorid != null and contractorid != ''">
+			and c.contractorid = #{contractorid}
+		</if>
+		<if test="userdeptid != null and userdeptid != ''">
+			and a.userdeptid = #{userdeptid}
+		</if>		
+		<if test="userorgids != null and userorgids != ''">
+			and a.userorgid in 
+			<foreach collection="userorgids" item="orgid" open="("
+				separator="," close=")">
+				#{orgid}
+			</foreach>
+		</if>
+		<if test="userdeptids != null and userdeptids != ''">
+			and a.useorgid in 
+			<foreach collection="userdeptids" item="deptid" open="("
+				separator="," close=")">
+				#{deptid}
+			</foreach>
+		</if>
+	</select>	
+	
+	<!-- 用户：租赁公司，查询租赁车辆信息 -->
+	<select id="getCarLeaseByContractor" resultType="hashmap" parameterType="hashmap" flushCache="true">
+		select c.id, c.carno, c.cartype, c.carstate, c.mentor, c.phone, c.simid, c.oilwear, c.contractorid, a.userorgid, a.userdeptid 
+		from car_info c , car_assign a where c.id = a.carid and c.status is null and a.status is null 
+		<if test="carno != null and carno != ''">
+			and c.carno like '%' || #{carno} || '%'
+		</if>
+		<if test="cartype != null and cartype != ''">
+			and c.cartype = #{cartype}
+		</if>
+		<if test="mentor != null and mentor != ''">
+			and c.mentor = #{mentor}
+		</if>
+		<if test="carstate != null and carstate != ''">
+			and c.carstate = #{carstate}
+		</if>
+		<if test="contractorid != null and contractorid != ''">
+			and c.contractorid = #{contractorid}
+		</if>
+		<if test="userdeptid != null and userdeptid != ''">
+			and a.userdeptid = #{userdeptid}
+		</if>	
+		<if test="orgids != null and orgids != ''">
+			and c.contractorid in
+			<foreach collection="orgids" item="orgid" open="("
+				separator="," close=")">
+				#{orgid}
+			</foreach>
+		</if>	
+	</select>		
+</mapper>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabletech.caranalyse.mapper.CarDistanceAnalyseMapper">
+	<select id="analyseCarDistance" resultType="hashmap"
+		parameterType="hashmap">
+		select
+		<!-- 按单个车辆统计 -->
+		<!-- 标准油耗，车载sim卡号，车牌号，司机，司机号码，开始时间，结束时间，里程 -->
+		<if test="analyseType=='car'">
+			h.*,c.oilwear,c.carno,c.mentor,c.oilwear*distance
+			oilwear_sum,a.userdeptid,c.contractorid
+		</if>
+		<!-- 按使用部门统计 -->
+		<!-- 组织编号，部门编号，车辆总数，开始时间，结束时间，里程 -->
+		<if test="analyseType=='depart'">
+			a.userorgid,a.userdeptid,min(h.kssj) as kssj,max(h.jssj) as
+			jssj,sum(h.distance) as distance,count(c.id) as car_num
+		</if>
+		<!-- 按所属公司统计 -->
+		<!-- 公司名称，车辆总数，开始时间，结束时间，里程 -->
+		<if test="analyseType=='org'">
+			c.contractorid,min(h.kssj) as kssj,max(h.jssj) as
+			jssj,sum(h.distance) as distance,count(c.id) as car_num
+		</if>
+		from (
+		select simid,min(activetime) kssj,max(activetime) jssj,
+		(decode(max(to_number(distance)),null,0,max(to_number(distance))) -
+		decode(min(to_number(distance)),null,0,min(to_number(distance))))/1000
+		distance
+		from historyposition_car where distance!=0
+		<!-- 是否为工作日 -->
+		<if test="ifWorkDay != null and ifWorkDay == 'true'">
+			and getTheWorkDayBeta(to_char(activetime,'yyyymmdd'))=1
+		</if>
+		<!-- 统计开始时间 -->
+		<if test="beginDate != null and beginDate != ''">
+			and activetime>=to_date(
+			#{beginDate,jdbcType=VARCHAR},'yyyy-mm-dd hh24:mi:ss')
+		</if>
+		<!-- 统计结束时间 -->
+		<if test="endDate != null and endDate != ''">
+			<![CDATA[
+			and activetime<=to_date(
+			#{endDate,jdbcType=VARCHAR},'yyyy-mm-dd hh24:mi:ss')
+			]]>
+		</if>
+		group by simid
+		) h,car_info c,car_assign a where c.simid = h.simid
+		and
+		c.id = a.carid
+		<!-- 区域编号 -->
+		<if test="regionId != null and regionId != ''">
+			and exists(
+			select regionid from view_region vr
+			where vr.regionid=c.regionid
+			start with
+			vr.regionid=#{regionId,jdbcType=VARCHAR}
+			connect by prior
+			vr.regionid=vr.parentid
+			)
+		</if>
+		<!-- 所属部门 -->
+		<if test="analyseType=='depart' and departId != null and departId != ''">
+			and exists(
+			select id from view_dept vd
+			where vd.id=a.userdeptid
+			start with vd.id=#{departId,jdbcType=VARCHAR}
+			connect by prior vd.id=vd.parentid
+			)
+		</if>
+		<!-- 所属公司 -->
+		<if test="analyseType=='org' and orgId != null and orgId != ''">
+			and exists(
+			select id from view_org vo
+			where vo.id=c.contractorid
+			start with vo.id=#{orgId,jdbcType=VARCHAR}
+			connect by prior vo.id=vo.parentid
+			)
+		</if>
+		<!-- 车牌号 -->
+		<if test="analyseType=='car' and carNo != null and carNo != ''">
+			and c.carno like '%' || #{carNo,jdbcType=VARCHAR} ||
+			'%'
+		</if>
+		<!-- 司机 -->
+		<if test="analyseType=='car' and mentor != null and mentor != ''">
+			and c.mentor like '%' || #{mentor,jdbcType=VARCHAR} || '%'
+		</if>
+		<!-- 车载sim卡号 -->
+		<if test="analyseType=='car' and simId != null and simId != ''">
+			and h.simid like '%' || #{simId,jdbcType=VARCHAR} || '%'
+		</if>
+		<!-- 按使用部门统计 -->
+		<if test="analyseType=='depart'">
+			group by a.userdeptid,a.userorgid
+		</if>
+		<!-- 按所属公司统计 -->
+		<if test="analyseType=='org'">
+			group by c.contractorid
+		</if>
+	</select>
+</mapper>

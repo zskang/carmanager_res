@@ -1,0 +1,19 @@
+#DataSource Config
+java.naming.provider.url=t3://localhost:7001
+jdbc.baseclient.jndi=Base
+jdbc.jndi=Rsuser
+#GIS Config
+webliburl=192.168.1.196:8080/CDN
+weblibctx=/CDN
+tablespacename=RSUSER_XA
+root=0
+
+#dbcp datasource settings
+jdbc.driver=oracle.jdbc.driver.OracleDriver
+jdbc.url=jdbc:oracle:thin:@192.168.1.10:1521:mydb
+jdbc.username=rsuser_xa
+jdbc.password=rsuser_xa
+hibernate.dialect=org.hibernate.dialect.Oracle10gDialect
+dbcp.initialSize=5
+dbcp.maxActive=20
+dbcp.maxIdle=10

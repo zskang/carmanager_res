@@ -1,0 +1,21 @@
+package com.cabletech.message;
+ 
+
+import com.cabletech.baseinfo.jms.DoBusiness;
+import com.cabletech.baseinfo.jms.SmParameter; 
+/**
+ * 短信监听器1
+ * @author zg
+ *
+ */
+public class ListenerForCode001 implements DoBusiness{
+
+	@Override
+	public void doSomething(SmParameter message) {
+		 
+		
+	}
+	 
+	 
+
+}

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabletech.core.mapper.ResCommonTagMapper">
+
+	<!-- 根据关键字段名称、关键字段值、表名称、查询待显示字段名称 -->
+	<select id="getDisplayName" resultType="java.lang.String" parameterType="hashmap" flushCache="true">
+		select ${displayName} from ${tableName} where ${keyColumn} = #{keyValue,jdbcType=VARCHAR}
+		<if test="regionids != null and regionids != ''">
+			and regionid in
+			<foreach collection="regionids" item="regionid" open="(" separator="," close=")">
+				#{regionid}
+			</foreach>
+		</if>
+	</select>
+	
+	<!-- 资源选择｛表名称、字段名称｝ -->
+	<select id="searchResourceData" resultType="hashmap" parameterType="hashmap" flushCache="true">
+		select xtbh,${columnName} mc from ${tableName} where ${columnName} like '%' ||#{columnValue,jdbcType=VARCHAR} ||'%'
+		<if test="regionids != null and regionids != ''">
+			and regionid in
+			<foreach collection="regionids" item="regionid" open="(" separator="," close=")">
+				#{regionid}
+			</foreach>
+		</if>		
+	</select>
+	
+	<select id="searchMutiResourceData" resultType="hashmap" parameterType="hashmap" flushCache="true">
+		select a.xtbh,a.gjmc mc from res_gjxx a where a.gjmc like '%' ||#{columnValue,jdbcType=VARCHAR} ||'%'
+		<if test="regionids != null and regionids != ''">
+			and a.regionid in
+			<foreach collection="regionids" item="regionid" open="(" separator="," close=")">
+				#{regionid}
+			</foreach>
+		</if>		
+		union
+		select b.xtbh,b.dgmc mc from res_dgxx b where b.dgmc like '%' ||#{columnValue,jdbcType=VARCHAR} ||'%'
+		<if test="regionids != null and regionids != ''">
+			and b.regionid in
+			<foreach collection="regionids" item="regionid" open="(" separator="," close=")">
+				#{regionid}
+			</foreach>
+		</if>		
+	</select>
+	
+	<!-- 资源选择｛表名称、字段名称｝ -->
+	<select id="fetchResourceData" resultType="hashmap" parameterType="hashmap" flushCache="true">
+		select xtbh,mc from ( select a.*, rownum rownum_ from (
+		select xtbh,${columnName} mc from ${tableName} where ${columnName} like '%' ||#{columnValue,jdbcType=VARCHAR} ||'%'
+		<if test="regionids != null and regionids != ''">
+			and regionid in
+			<foreach collection="regionids" item="regionid" open="(" separator="," close=")">
+				#{regionid}
+			</foreach>
+		</if>	
+		<![CDATA[
+		) a where rownum <= 10) where rownum_ > 0
+		]]>				
+	</select>	
+	
+	<select id="fetchMutiResourceData" resultType="hashmap" parameterType="hashmap" flushCache="true">
+		select xtbh,mc from ( select a.*, rownum rownum_ from (
+		select a.xtbh,a.gjmc mc from res_gjxx a where a.gjmc like '%' ||#{columnValue,jdbcType=VARCHAR} ||'%'
+		<if test="regionids != null and regionids != ''">
+			and a.regionid in
+			<foreach collection="regionids" item="regionid" open="(" separator="," close=")">
+				#{regionid}
+			</foreach>
+		</if>		
+		union
+		select b.xtbh,b.dgmc mc from res_dgxx b where b.dgmc like '%' ||#{columnValue,jdbcType=VARCHAR} ||'%'
+		<if test="regionids != null and regionids != ''">
+			and b.regionid in
+			<foreach collection="regionids" item="regionid" open="(" separator="," close=")">
+				#{regionid}
+			</foreach>
+		</if>
+		<![CDATA[
+		) a where rownum <= 10) where rownum_ > 0
+		]]>			
+	</select>	
+</mapper>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabletech.carassign.mapper.CarAssignedMapper">
+	<!-- 获取已分配部门的车辆信息列表 -->
+	<select id="getAssignedCarList" parameterType="hashmap"
+		resultType="hashmap">
+		SELECT
+		ci.ID,ci.CARNO,ci.CARTYPE,ci.SIMID,ci.REGIONID,ci.OILWEAR,
+		ci.MENTOR,ci.CONTRACTORID,ci.PHONE,TO_CHAR(ci.CREATEDATE,'yyyy-mm-dd')
+		AS CREATEDATE, ci.OUTPUTVOLUME,TO_CHAR(ci.BUYDATE,'yyyy-mm-dd')
+		AS
+		BUYDATE,ca.USERDEPTID
+		FROM car_info ci,car_assign ca
+		WHERE 1=1 AND
+		ci.id=ca.carid
+		<!-- 车牌号 -->
+		<if test="carNo != null and carNo != ''">
+			and ci.carno like '%' || #{carNo,jdbcType=VARCHAR} ||
+			'%'
+		</if>
+		<!-- 司机 -->
+		<if test="mentor != null and mentor != ''">
+			and ci.mentor like '%' || #{mentor,jdbcType=VARCHAR} ||
+			'%'
+		</if>
+		<!-- 车型 -->
+		<if test="carType != null and carType != ''">
+			and ci.cartype=#{carType,jdbcType=VARCHAR}
+		</if>
+		<!-- 使用部门 -->
+		<if test="departId != null and departId != ''">
+			and ca.userdeptid=#{departId,jdbcType=VARCHAR}
+		</if>
+		<!-- 所属公司 -->
+		<if test="orgId != null and orgId != ''">
+			and ci.contractorid=#{orgId,jdbcType=VARCHAR}
+		</if>
+		<!-- 用户组织机构 -->
+		<if test="userOrgId != null and userOrgId != ''">
+			and (
+			<!-- 使用部门的组织回收正在使用的车辆 -->
+			(ca.userorgid=#{userOrgId,jdbcType=VARCHAR} 
+			and ca.userdeptid IS NOT NULL)
+			or
+			<!-- 分配的组织回收未使用的车辆 -->
+			(ca.assignorgid=#{userOrgId,jdbcType=VARCHAR}
+			and ca.userorgid IS NOT NULL 
+			and ca.userdeptid IS NULL
+			)
+			or
+			<!-- 添加车辆的组织回收未使用的车辆 -->
+			(ca.addorgid=#{userOrgId,jdbcType=VARCHAR}
+			and ca.assignorgid!=#{userOrgId,jdbcType=VARCHAR}
+			and ca.userdeptid IS NULL
+			)
+			)
+		</if>
+	</select>
+	<!-- 获取回收车辆的分配信息 -->
+	<select id="getAssignedCarById" parameterType="string"
+		resultType="hashmap">
+		SELECT ca.*
+		FROM car_assign ca
+		WHERE ca.carid=#{carId,jdbcType=VARCHAR}
+	</select>
+	<!-- 进行车辆的回收 -->
+	<!-- 使用部门的组织回收正在使用的车辆 -->
+	<update id="unAssignCarByUseDepart" parameterType="hashmap">
+		update car_assign ca
+		set
+		ca.userdeptid=null where
+		ca.carid=#{carId,jdbcType=VARCHAR}
+	</update>
+	<!-- 进行车辆的回收 -->
+	<!-- 分配的组织回收未使用的车辆 -->
+	<update id="unAssignCarByAssignOrg" parameterType="hashmap">
+		update car_assign ca
+		set
+		ca.userorgid=null where
+		ca.carid=#{carId,jdbcType=VARCHAR}
+	</update>
+	<!-- 进行车辆的回收 -->
+	<!-- 添加车辆的组织回收未使用的车辆 -->
+	<update id="unAssignCarByAddOrg" parameterType="hashmap">
+		update car_assign ca
+		set
+		ca.assignorgid=#{userOrgId,jdbcType=VARCHAR},
+		ca.userorgid=null
+		where
+		ca.carid=#{carId,jdbcType=VARCHAR}
+	</update>
+</mapper>

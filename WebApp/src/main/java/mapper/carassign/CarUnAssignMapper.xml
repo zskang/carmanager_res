@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabletech.carassign.mapper.CarUnAssignMapper">
+	
+	<!-- 查询未分配车辆 -->
+	<select  id="getUnAssignCars" resultType="hashmap" parameterType="hashmap" flushCache="true">
+		select 
+		c.id,c.carno,c.cartype,c.mentor,c.phone,c.simid,c.oilwear,c.contractorid,s.userdeptid 
+		from car_assign s,car_info c where s.carid = c.id and c.status is null and s.status is null and s.userdeptid is null 
+		<if test="useOrgId!=null and useOrgId!='' and assignOrgId!=null and assignOrgId!=''">
+			and (s.userorgid = #{useOrgId,jdbcType=VARCHAR} or (s.assignorgid = #{assignOrgId,jdbcType=VARCHAR} and s.userorgid is null))
+		</if>
+		<if test="carNo!=null and carNo!=''">
+			 and c.carno =#{carNo,jdbcType=VARCHAR}
+		</if>
+		<if test="carType!=null and carType!=''">
+			 and c.cartype =#{carType,jdbcType=VARCHAR}
+		</if>
+		<if test="mentor!=null and mentor!=''">
+			and c.mentor like '%'||#{mentor,jdbcType=VARCHAR}||'%'
+		</if>
+		<if test="contractorId!=null and contractorId!=''">
+			and c.contractorid =#{contractorId,jdbcType=VARCHAR}
+		</if>
+	</select>
+	
+	<!-- 分配车辆 -->
+	<update id="assignCars" parameterType="hashmap">
+		 update car_assign t set t.userorgid = #{userOrgId},t.userdeptid = #{userDeptId},t.assignorgid = #{assignOrgId} where t.carid = #{carId} 
+	</update>
+	
+	<!-- 插入分配历史信息 -->
+	<insert id="assignCarsHis" parameterType="hashmap">
+		insert into car_assign_history (
+		    id,carid,assigndate,userorgname,userdeptname,assignusername
+		) values(
+  			#{id},#{carId},#{assignDate,jdbcType=DATE},#{userOrgName},#{userDeptName},#{assignUserName}
+		)
+	</insert>
+
+</mapper>

@@ -1,0 +1,394 @@
+package com.cabletech.carapplydispatch.action;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import org.apache.commons.lang.StringUtils;
+import org.apache.struts2.convention.annotation.Action;
+import org.apache.struts2.convention.annotation.Namespace;
+import org.apache.struts2.convention.annotation.Result;
+import org.apache.struts2.convention.annotation.Results;
+
+import com.cabletech.baseinfo.business.entity.UserInfo;
+import com.cabletech.carapplydispatch.entity.CarAndCardispatchEntity;
+import com.cabletech.carapplydispatch.entity.CarApplyDispatchEntity;
+import com.cabletech.carapplydispatch.service.CarApplyDispatchService;
+import com.cabletech.core.action.BaseAction;
+
+/**
+ * 车辆调度类
+ * 
+ * @author Administrator
+ * 
+ */
+@Namespace("/carapply")
+@Results({
+		@Result(name = "unallocatedList", location = "/carapplydispatch/carapplydispatch-list.jsp"),
+		@Result(name = "insertCarApply", location = "/carapplydispatch/carapplydispatch-add.jsp"),
+		@Result(name = "reload", location = "/carapply/carapplyAction!unallocatedList.action", type = "redirect"),
+		@Result(name = "toInsert", location = "/carapply/carapplyAction!toInsertCarApply.action", type = "redirect"),
+		@Result(name = "toDispatchedList", location = "/carapply/carapplyAction!toDispatchedList.action", type = "redirect"),
+		@Result(name = "toDispatch", location = "/carapplydispatch/carapplydispatch-diaptchAdd.jsp"),
+		@Result(name = "toBack", location = "/carapplydispatch/carapplydispatch-back.jsp"),
+		@Result(name = "toDispatched", location = "/carapplydispatch/cardispatched-list.jsp") })
+@Action("carapplyAction")
+public class CarApplyDispatchAction extends BaseAction {
+
+	/**
+	 * 序列化
+	 */
+	private static final long serialVersionUID = 5332561120562361722L;
+
+	/***
+	 * 调度事物
+	 */
+	@Resource(name = "carApplyDispatchServiceImpl")
+	private CarApplyDispatchService carApplyDispatchService;
+
+	/***
+	 * 调度实体
+	 */
+	private CarApplyDispatchEntity entity;
+
+	private CarAndCardispatchEntity carDispatchEntity;
+
+	public CarAndCardispatchEntity getCarDispatchEntity() {
+		return carDispatchEntity;
+	}
+
+	public void setCarDispatchEntity(CarAndCardispatchEntity carDispatchEntity) {
+		this.carDispatchEntity = carDispatchEntity;
+	}
+
+	public CarApplyDispatchEntity getEntity() {
+		return entity;
+	}
+
+	public void setEntity(CarApplyDispatchEntity entity) {
+		this.entity = entity;
+	}
+
+	/***
+	 * 未调度信息
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public String unallocatedList() throws Exception {
+		Map<String, Object> map = dispatchConInit();
+		Map<String, Object> carapplyList = carApplyDispatchService
+				.queryPageMap("selectCarApplyDispatch", map,
+						super.getPage("page"), super.getLimit("rows"));
+		request.setAttribute("condition", map);
+		request.setAttribute("map", carapplyList);
+		revealTipMessage("carapply");// 取出信息用于前台获取（列表或查看页）
+		return "unallocatedList";
+	}
+
+	/***
+	 * 回调函数得到手机号码
+	 * 
+	 * @return
+	 */
+	public String getPhoneJson() {
+		String phone = carApplyDispatchService.selectPhoneById(request
+				.getParameter("userid"));
+		if (phone == null)
+			phone = "";
+		super.outmessage(phone);
+		return null;
+	}
+
+	/***
+	 * 添加调度申请信息
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public String save() throws Exception {
+		carApplyDispatchService.insertCarApplyDispatch(entity);
+		setTipMessage("carapply", "申请调度车辆信息成功");// 设置提示信息(操作的方法)
+		return "toInsert";
+	}
+
+	/**
+	 * 转向添加申请添加页面
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public String toInsertCarApply() throws Exception {
+		UserInfo user = super.getUser();
+		request.setAttribute("userName", user.getUserName());
+		return "insertCarApply";
+	}
+
+	/***
+	 * 得到未使用汽车的信息
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+
+	@SuppressWarnings("rawtypes")
+	public String getUnusedCarJson() throws Exception {
+		request.setCharacterEncoding("utf-8");
+		String carMan = request.getParameter("carMan").trim();
+		String CarNumber = request.getParameter("CarNumber").trim();
+	
+		List orgList = super.baseInfoProvider.getOrgService()
+				.searchAllChildren(this.getUser().getOrgId());// 递归IDs
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("orgList", orgList);
+		map.put("CarNumber", CarNumber);
+		map.put("carMan", carMan);
+		StringBuffer carstring = new StringBuffer();
+		List<Map<String, String>> unusedCarlist = carApplyDispatchService
+				.selectUnusedCar(map);
+		carstring.setLength(0);
+		if (unusedCarlist.size() > 0 && unusedCarlist != null) {
+			carstring.append("<option value=\"0\">--请选择--</option>");
+			Map<String, String> tmpMap;
+			for (int i = 0, len = unusedCarlist.size(); i < len; i++) {
+				tmpMap = unusedCarlist.get(i);
+				carstring.append("<option value=\"" + tmpMap.get("ID") + "\">"
+						+ tmpMap.get("CARNO") + "</option>");
+			}
+		} 
+		logger.info(carstring.toString());
+		super.outmessage(carstring.toString());
+		 return null;
+	}
+
+	/***
+	 * 到调度页面
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public String toDispatch() throws Exception {
+		String id = request.getParameter("id");
+		entity = carApplyDispatchService.selectCarDispatchById(id);
+		request.setAttribute("entity", entity);
+		return "toDispatch";
+	}
+
+	/***
+	 * 调度修改
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public String update() throws Exception {
+		UserInfo user = super.getUser();
+		entity.setDispatcher(user.getPersonId());
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		entity.setDisp_date(sdf.format(new Date()));
+		int up = carApplyDispatchService.updateCarDispatch(entity);
+		if (up != 0) {
+			logger.info("提交成功！");
+		}
+		return RELOAD;
+	}
+
+	/**
+	 * update前执行
+	 * 
+	 * @throws Exception
+	 */
+	public void prepareUpdate() throws Exception {
+		if (entity == null) {
+			entity = new CarApplyDispatchEntity();
+		}
+	}
+
+	@Override
+	public Object getModel() {
+		return entity;
+	}
+
+	@Override
+	protected void prepareSaveModel() throws Exception {
+		if (entity == null) {
+			entity = new CarApplyDispatchEntity();
+		}
+
+	}
+
+	@Override
+	protected void prepareViewModel() throws Exception {
+	}
+
+	@Override
+	public String execute() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	/****
+	 * 加载查询未调度车辆的Map条件
+	 * 
+	 * @return Map<String, Object> map 查询条件
+	 */
+	private Map<String, Object> dispatchConInit() {
+		UserInfo user = super.getUser();
+		Map<String, Object> map = new HashMap<String, Object>();
+		// 得到登录人员组织以及组织一下的人员
+		List<Map<String, Object>> userList = baseInfoProvider
+				.getPersonService().getOrgPersonList(user.getUserId());
+		map.put("applicantList", convertListmapForList(userList, "SID"));
+		return map;
+	}
+
+	/***
+	 * 跳转到已调度列表
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public String toDispatchedList() throws Exception {
+		@SuppressWarnings("unchecked")
+		Map<String, Object> map = dispatchedConInit();
+		//String dispstate=request.getParameter("dispstate");
+		//String mapName="";
+	   // if(StringUtils.isNotBlank(dispstate) && dispstate.equals("2")){
+		//	mapName="selectCarApplyDispatched4noCar";//无车可调 查询
+       //	}else{
+		//    mapName="selectCarApplyDispatched";
+		//}
+		Map<String, Object> carapplyedList = carApplyDispatchService
+				.queryPageMap("selectCarApplyDispatched", map,
+						super.getPage("page"), super.getLimit("rows"));
+		request.setAttribute("condition", map);
+		request.setAttribute("map", carapplyedList);
+		revealTipMessage("carapplyed");// 取出信息用于前台获取（列表或查看页）
+		return "toDispatched";
+	}
+
+	/***
+	 * 加载已调度信息的Map条件
+	 * 
+	 * @return Map 已调度信息的Map条件
+	 */
+	@SuppressWarnings("rawtypes")
+	public Map dispatchedConInit() {
+		UserInfo user = super.getUser(); // 用户
+		StringBuffer querystring = new StringBuffer(1000);// 用于连接设置的字符串
+		Map<String, Object> map = new HashMap<String, Object>();// 定义的返回map
+		List<Map<String, Object>> userList = baseInfoProvider
+				.getPersonService().getOrgPersonList(user.getUserId());// 该用户组织以及组织一下的人员的id集合
+		map.put("flag", "2");// 取标识为2的已调度列表
+		map.put("applicantList", convertListmapForList(userList, "SID"));
+		processParamValue(map, querystring, "applicant");
+		processParamValue(map, querystring, "start");
+		processParamValue(map, querystring, "end");
+		processParamValue(map, querystring, "carno");
+		String[] dispstate = request.getParameterValues("dispstate");
+		map.put("dispstateList", convertStringParasToList(dispstate));
+		map.put("querystring", querystring);
+		return map;
+	}
+
+	/***
+	 * 跳转到调回详细页面
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public String toBack() throws Exception {
+		String id = request.getParameter("id");
+		carDispatchEntity = carApplyDispatchService
+				.selectCarAndCarDispatche(id);
+		request.setAttribute("entity", carDispatchEntity);
+		return "toBack";
+	}
+
+	/***
+	 * 调回车辆
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public String saveBack() throws Exception {
+		String id = request.getParameter("id");
+		String recall_remark = request.getParameter("recall_remark");
+		entity = carApplyDispatchService.selectCarDispatchById(id);
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		entity.setRecall_date(sdf.format(new Date()));
+		entity.setRecall_remark(recall_remark);
+		entity.setRecall_person(super.getUser().getPersonId());
+		entity.setDisp_state("4");
+		carApplyDispatchService.updateCarUnusedById(entity.getCar_no());// 将骑车状态改为0
+																		// 空闲。
+		carApplyDispatchService.updateCarDispatch(entity);// 取消当期订单4
+		return "toDispatchedList";
+	}
+
+	/**
+	 * 将request中的参数值放入查询条件Map，并构建查询QueryUri
+	 * 
+	 * @param map
+	 *            Map<String, Object> 查询条件Map
+	 * @param queryString
+	 *            StringBuffer 查询条件的queryUri
+	 * @param key
+	 *            String 参数
+	 */
+	private void processParamValue(Map<String, Object> map,
+			StringBuffer queryString, String key) {
+		String value = request.getParameter(key);
+		map.put(key, value);
+		if (StringUtils.isNotBlank(value)) {
+			queryString.append("&" + key + "=" + value);
+		}
+	}
+
+	/***
+	 * 将List<map<String,object>>转换成List<String>类型
+	 * 
+	 * @param mapList
+	 *            list对象
+	 * @param ides
+	 *            key值
+	 * @return
+	 */
+	public List<String> convertListmapForList(
+			List<Map<String, Object>> mapList, String ides) {
+		List<String> list = null;
+		if (mapList.size() > 0 && mapList != null) {
+			list = new ArrayList<String>();
+			for (int i = 0, len = mapList.size(); i < len; i++) {
+				if (ides != null && StringUtils.isNotBlank(ides)) {
+					if (mapList.get(i).get(ides) != null
+							&& !mapList.get(i).get(ides).equals("")) {
+						list.add(mapList.get(i).get(ides).toString());
+					}
+				}
+			}
+		}
+		return list;
+	}
+
+	/***
+	 * 将字符串的数组转换成List<string>的集合
+	 * 
+	 * @param paras
+	 *            字符串的数组
+	 * @return List<String> List<string>的集合
+	 */
+	public List<String> convertStringParasToList(String[] paras) {
+		List<String> list = null;
+		if (paras != null && paras.length > 0) {
+			list = new ArrayList<String>();
+			for (int i = 0, len = paras.length; i < len; i++) {
+				list.add(paras[i]);
+			}
+		}
+		return list;
+	}
+}

@@ -1,0 +1,13 @@
+package com.cabletech.test;
+
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.junit.Test;
+
+import com.cabletech.res.service.basemgr.GldxtService;
+
+public class DemoTest extends BaseTest {
+	
+}

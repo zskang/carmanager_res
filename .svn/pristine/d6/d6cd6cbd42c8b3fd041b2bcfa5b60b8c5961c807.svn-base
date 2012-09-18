@@ -1,0 +1,427 @@
+package com.cabletech.carapplydispatch.service;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.apache.commons.lang.StringUtils;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.cabletech.baseinfo.business.Service.BaseInfoProvider;
+import com.cabletech.baseinfo.business.Service.BaseUserService;
+import com.cabletech.baseinfo.jms.SmMessageSender;
+import com.cabletech.baseinfo.jms.SmParameter;
+import com.cabletech.carapplydispatch.Contanst.MessageConfig;
+import com.cabletech.carapplydispatch.entity.CarAndCardispatchEntity;
+import com.cabletech.carapplydispatch.entity.CarApplyDispatchEntity;
+import com.cabletech.carapplydispatch.mapper.CarApplyDispatchMapper;
+import com.cabletech.carmanager.service.CarInfoService;
+import com.cabletech.core.service.BaseServiceImpl;
+
+/**
+ * 车辆调度业务实现类
+ * @author Administrator
+ *
+ */
+@Service
+public class CarApplyDispatchServiceImpl extends BaseServiceImpl implements
+		CarApplyDispatchService {
+
+	@Resource(name = "carApplyDispatchMapper")
+	private CarApplyDispatchMapper carApplyDispatchMapper;
+
+	@Resource(name = "smMessageSender")
+	private SmMessageSender smSender;
+
+
+
+	@Resource(name = "baseInfoProvider")
+	private BaseInfoProvider baseInfoProvider; 
+	
+	@Resource(name = "carInfoServiceImpl")
+	private CarInfoService carInfoService;
+
+	private Map<String, Object> map = new HashMap<String, Object>();
+	private Integer flag = 0;
+	private SmParameter parameter = null;;
+	private SmParameter parameter2 = null;
+
+	/*
+	 * 开始调度操作
+	 */
+	@Override
+	public Integer updateCarDispatch(CarApplyDispatchEntity entity) {
+		Integer a = 0;
+		logger.error("调度...");
+		if (entity != null) {
+			sendMessageToUser(entity);
+			a = carApplyDispatchMapper.updateCarDispatch(entity);
+		}
+		return a;
+	}
+
+	/**
+	 * 根据不同的情况发送短信息给不同的用户
+	 * 
+	 * @param entity 调度实体 
+	 */
+	public void sendMessageToUser(CarApplyDispatchEntity entity) {
+		Map<String, Object> mapp = ContactMessage(entity);
+		if (mapp != null && !mapp.isEmpty()) {
+			String dispStat = entity.getDisp_state();
+			if (StringUtils.isBlank(dispStat) && dispStat != null) {
+				return;
+			}
+			if (dispStat.equals(MessageConfig.Code_NONECar)) {
+				sendAndUpdateNONECarState(entity, mapp);
+			}
+			if (dispStat.equals(MessageConfig.Code_WAITCheck)) {
+				sendAndUpdateWaitCheckState(entity, mapp);
+			}
+			if (dispStat.equals(MessageConfig.Code_CANCEL)) {
+				sendAndUpdateCANCELState(entity, mapp);
+			}
+		}
+	}
+
+	/**
+	 * 发送信息-----无车可掉
+	 * 
+	 * @param entity 调度实体
+	 * @param mapp 参数
+	 */
+	public void sendAndUpdateNONECarState(CarApplyDispatchEntity entity,
+			Map<String, Object> mapp) {
+		parameter = SmParameter.getInstanceForNeedResponse(mapp
+				.get("code_user").toString(), mapp.get("WAITDISP").toString());
+		parameter.setBusinessCode(mapp.get("buessinCode").toString());
+		smSender.sendMessage(parameter);
+		map.put("id", entity.getId());
+		map.put("adisp_code",
+				mapp.get("buessinCode")
+						.toString()
+						.substring(3,
+								mapp.get("buessinCode").toString().length()));
+		map.put("disp_state", MessageConfig.Code_NONECar);
+		flag = updateDispCode(map);// 更新调单号 并且更改状态。
+		if (flag != 0) {
+			logger.info("提交调单号到数据库了.");
+		}
+	}
+
+	/**
+	 * 发送信息 ---- 等待审核
+	 * 
+	 * @param entity 调度实体
+	 * @param mapp 参数
+	 */
+	public void sendAndUpdateWaitCheckState(CarApplyDispatchEntity entity,
+			Map<String, Object> mapp) {
+		parameter = SmParameter.getInstanceForNeedResponse(mapp
+				.get("code_user").toString(), mapp.get("WAITCHECK").toString());
+		parameter.setBusinessCode(mapp.get("buessinCode").toString());
+		smSender.sendMessage(parameter);
+		parameter2 = SmParameter.getInstanceForNeedResponse(mapp.get("code_zz")
+				.toString(), mapp.get("WAITTOCHECK").toString());
+		parameter2.setBusinessCode(mapp.get("buessinCode").toString());
+		smSender.sendMessage(parameter2);
+		map.put("id", entity.getId());
+		map.put("adisp_code",
+				mapp.get("buessinCode")
+						.toString()
+						.substring(3,
+								mapp.get("buessinCode").toString().length()));
+		map.put("disp_state", MessageConfig.Code_DISPSuccess);
+		flag = updateDispCode(map);// 更新调单号 并且更改状态。
+		if (flag != 0) {
+			logger.info("提交调单号到数据库了.");
+		}
+	}
+
+	/**
+	 * 取消或者等待调度 发送信息
+	 * 
+	 * @param entity 调度实体
+	 * @param mapp 参数
+	 */
+	public void sendAndUpdateCANCELState(CarApplyDispatchEntity entity,
+			Map<String, Object> mapp) {
+		parameter = SmParameter.getInstanceForNeedResponse(mapp
+				.get("code_user").toString(), mapp.get("DISPBACK").toString());
+		parameter.setBusinessCode(mapp.get("buessinCode").toString());
+		smSender.sendMessage(parameter);
+		map.put("id", entity.getId());
+		map.put("adisp_code",
+				mapp.get("buessinCode")
+						.toString()
+						.substring(3,
+								mapp.get("buessinCode").toString().length()));
+		map.put("disp_state", MessageConfig.Code_CANCEL);
+		flag = updateDispCode(map);// 更新调单号 并且更改状态。
+		if (flag != 0) {
+			logger.info("提交调单号到数据库了.  并且更改状态。");
+		}
+	}
+
+	/**
+	 * 组织map 存放短信发送的内容和对象
+	 * 
+	 * @param entity 调度实体
+	 * @return Map
+	 */
+	public Map<String, Object> ContactMessage(CarApplyDispatchEntity entity) {
+		if (entity.getDisp_state().equals(MessageConfig.Code_CANCEL)) {
+			map.put("DISPBACK", MessageConfig.MESSAGE_DISPBACK);
+		}
+		if (entity.getDisp_state().equals(MessageConfig.Code_WAITCheck)) {
+			map = getStringMap(entity);
+		}
+		if (entity.getDisp_state().equals(MessageConfig.Code_NONECar)) {
+			map.put("WAITDISP", MessageConfig.MESSAGE_WAITDISP);
+		}
+		map.put("code_zz", entity.getApproversim());// 发送短信给车辆使用申请人
+		map.put("buessinCode", MessageConfig.BussCode2 + getNowMaxDispCode());
+		map.put("code_user", entity.getPhone());
+		return map;
+	}
+
+	/**
+	 * 获取当前最大的调单号
+	 * 
+	 * @return
+	 */
+	public String getNowMaxDispCode() {
+		Map<String, Object> mps = new HashMap<String, Object>();
+		mps.put("Timed", MessageConfig.TIMED);
+		return GeneralDispCode(mps);
+	}
+
+	/**
+	 * 组装发信息的String
+	 * 
+	 * @param entity 调度实体
+	 * @return
+	 */
+	public Map<String, Object> getStringMap(CarApplyDispatchEntity entity) {
+		map.put("WAITCHECK", MessageConfig.MESSAGE_WAITCHECK);
+		StringBuffer flagString = new StringBuffer();
+		flagString
+				.append("  "
+						+ baseInfoProvider.getPersonService().getPersonInfo(entity.getApprover()).get("USERNAME").toString()
+								 + " 您好！")
+				.append(entity.getUsername() + "于")
+				.append(entity.getApply_date())
+				.append("因" + entity.getUse_reason() + "需要使用"
+						+ carInfoService.getbyid(entity.getCar_no()).getCarno()
+						+ "车,").append("请您审批! 同意回复   y，不同意回复   n");
+		map.put("WAITTOCHECK", flagString.toString());
+		return map;
+	}
+
+	/*
+	 * 获取用车人电话号码
+	 * 
+	 * @return
+	 */
+	@Override
+	public String getCarManPhone(String car_no) {
+		return carApplyDispatchMapper.getCarManPhone(car_no);
+	}
+
+	/**
+	 * 生成调度单号 4位 0001----9999
+	 * @param mps 参数
+	 * @return
+	 */
+	public String GeneralDispCode(Map<String, Object> mps) {
+		String dispCode = carApplyDispatchMapper.GeneralDispCode(mps);
+		if (dispCode == null) {
+			dispCode = "0";
+		}
+		dispCode = getNumber(Integer.valueOf(dispCode));
+		return dispCode;
+	}
+
+	/**
+	 * 自动增长1
+	 * 
+	 * @param num 基数
+	 * @return
+	 */
+	public static String getNumber(int num) {
+		String result = "";
+		num++;
+		switch ((num + "").length()) {
+		case 1:
+			result = "0000" + num;
+			break;
+		case 2:
+			result = "000" + num;
+			break;
+		case 3:
+			result = "00" + num;
+			break;
+		case 4:
+			result = "0" + num;
+			break;
+		default:
+			result = "00000";
+			break;
+		}
+		return result;
+	}
+
+	@Override
+	public Integer updateCarUnused(String carno) {
+		return carApplyDispatchMapper.updateCarUnused(carno);
+	}
+
+	@Override
+	public Map<String, Object> selectCarApplyDispatched(
+			Map<String, Object> condition) {
+		return carApplyDispatchMapper.selectCarApplyDispatched(condition);
+	}
+
+	@Override
+	public CarAndCardispatchEntity selectCarAndCarDispatche(String id) {
+		return carApplyDispatchMapper.selectCarAndCarDispatche(id);
+	}
+
+	@Transactional
+	@Override
+	public Integer backed(CarApplyDispatchEntity entity) {
+		carApplyDispatchMapper.updateCarDispatch(entity);
+		carApplyDispatchMapper.updateCarUnused(entity.getCar_no());
+		return null;
+	}
+
+	/***
+	 * 添加调度信息
+	 * 
+	 * @param applydispatchentity
+	 *            调度信息
+	 * @return
+	 * @throws ParseException
+	 */
+	@Transactional
+	@Override
+	public Integer insertCarApplyDispatch(
+			CarApplyDispatchEntity applydispatchentity) {
+		String id = super.getXTBH();
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		applydispatchentity.setApply_date(sdf.format(new Date()));
+		logger.error("时间格式化错误");
+		applydispatchentity.setId(id);
+		applydispatchentity.setDisp_state("0");
+		return carApplyDispatchMapper
+				.insertCarApplyDispatch(applydispatchentity);
+	}
+
+	/***
+	 * 添加调度信息
+	 * 
+	 * @param applydispatchentity
+	 *            调度信息
+	 * @return
+	 * @throws ParseException
+	 */
+	@Transactional
+	@Override
+	public Integer insertCarApplyDispatchByMobile(
+			CarApplyDispatchEntity applydispatchentity) {
+		String id = super.getXTBH();
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		applydispatchentity.setApply_date(sdf.format(new Date()));
+		logger.error("时间格式化错误");
+		applydispatchentity.setId(id);
+		applydispatchentity.setDisp_state("0");
+		return carApplyDispatchMapper
+				.insertCarApplyDispatchByMobile(applydispatchentity);
+	}
+
+	@Override
+	public int updateCarUnusedById(String car_no) {
+
+		return carApplyDispatchMapper.updCarUnusedById(car_no);
+	}
+
+	/***
+	 * 通过条件得到调度列表
+	 * 
+	 * @param condition
+	 *            条件
+	 * @return Map<String,Object> 调度列表
+	 */
+	@Override
+	public Map<String, Object> selectCarApplyDispatch(
+			Map<String, Object> condition) {
+		return carApplyDispatchMapper.selectCarApplyDispatch(condition);
+	}
+
+	@Override
+	public String selectPhoneById(String userid) {
+		return carApplyDispatchMapper.selectPhoneById(userid);
+	}
+
+	/* (non-Javadoc)
+	 * @see com.cabletech.carapplydispatch.service.CarApplyDispatchService#selectUserByPhone(java.lang.String)
+	 */
+	@Override
+	public Map<String, Object> selectUserByPhone(String phone) {
+		List<Map<String,Object>> list=carApplyDispatchMapper.selectUserByPhone2(phone);
+		if(null!=list&&list.size()>0){
+			return list.get(0);
+		}
+		return null;
+		
+		
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Override
+	public List selectUnusedCar(Map<String, Object> mps) {
+		return carApplyDispatchMapper.selectUnusedCar(mps);
+	}
+
+	@Override
+	public CarApplyDispatchEntity selectCarDispatchById(String id) {
+		return carApplyDispatchMapper.selectCarDispatchById(id);
+	}
+
+	@Override
+	public Integer updateDispCode(Map<String, Object> mp) {
+		return carApplyDispatchMapper.updateDispCode(mp);
+	}
+
+	@Override
+	public CarApplyDispatchEntity selectCarDispatchByDispCode(String dispCode) {
+		return carApplyDispatchMapper.selectCarDispatchByDispCode(dispCode);
+	}
+
+	/**
+	 * 更新车辆状态
+	 * @param carno 车辆ID
+	 * @return
+	 */
+	public int updateCarUnUsed(String carno) {
+		return carApplyDispatchMapper.updateCarUnused(carno);
+	}
+
+	@Override
+	public int updateState(Map<String, Object> mp) {
+		return carApplyDispatchMapper.updateState(mp);
+	}
+
+	@Override
+	public Integer updateCarUsed(String carno) {
+
+		return carApplyDispatchMapper.updateCarUnused(carno);
+	}
+
+}

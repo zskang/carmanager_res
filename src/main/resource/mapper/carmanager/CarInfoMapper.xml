@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper
+	namespace="com.cabletech.carmanager.mapper.CarInfoMapper">
+
+	<delete id="getBack" parameterType="java.lang.String">
+		update car_assign set status = '9' where carid =
+		#{carid,jdbcType=VARCHAR}
+	</delete>
+
+	<!-- 获取全部项 -->
+	<select id="getallitem" resultType="hashmap" parameterType="hashmap"
+		flushCache="true">
+		select ci.* from car_info ci left join car_assign
+		ca on ci.id = ca.carid and (ca.status!='9' or ca.status is null)
+	</select>
+
+	<!-- 根据条件获取全部车辆信息-管理员使用 -->
+	<select id="getbymap" resultType="hashmap" parameterType="hashmap"
+		flushCache="true">
+		select
+		ci.*,ca.userorgid,ca.userdeptid from car_info ci left join
+		car_assign ca on ci.id = ca.carid  where 1=1 and ci.status is  
+		null 
+		<if test="carno != null and carno != ''">
+			and ci.carno like '%' || #{carno,jdbcType=VARCHAR} || '%'
+		</if>
+		<if test="cartype != null and cartype != ''">
+			and ci.cartype =#{cartype,jdbcType=VARCHAR}
+		</if>
+		<if test="simid != null and simid != ''">
+			and ci.simid like '%'||#{simid,jdbcType=VARCHAR}||'%'
+		</if>
+		<if test="mentor != null and mentor != ''">
+			and ci.mentor like '%'||#{mentor,jdbcType=VARCHAR}||'%'
+		</if>
+		<if test="contractorid != null and contractorid != ''">
+			and ci.contractorid =#{contractorid,jdbcType=VARCHAR}
+		</if>
+		<if test="carstate != null and carstate != ''">
+			and ci.carstate=#{carstate,jdbcType=VARCHAR}
+		</if>
+		<if test="regionids != null and regionids != ''">
+			and ci.regionid in
+			<foreach collection="regionids" item="points" open="("
+				separator="," close=")">
+				#{points}
+			</foreach>
+		</if>
+		<if test="orgids != null and orgids != ''">
+			and ci.contractorid in
+			<foreach collection="orgids" item="points" open="("
+				separator="," close=")">
+				#{points}
+			</foreach>
+		</if>		
+		order by ci.createdate desc
+	</select>
+
+	<!-- 根据条件获取全部车辆信息 -部门人员使用-->
+	<select id="getbymapdept" resultType="hashmap"
+		parameterType="hashmap" flushCache="true">
+		select
+		ci.* from car_assign ca left join
+		car_info ci on ci.id = ca.carid where
+		<if test="carno != null and carno != ''">
+			ci.carno like '%' || #{carno,jdbcType=VARCHAR} || '%' and
+		</if>
+		<if test="parenttype == 'ORG'">
+			ca.useorgid = #{parentid,jdbcType=VARCHAR} and
+		</if>
+		<if test="parenttype == 'DEPT'">
+			ca.usedeptid = #{parentid,jdbcType=VARCHAR} and
+		</if>
+		<if test="contractorid != null and contractorid != ''">
+			ca.useorgid = #{contractorid,jdbcType=VARCHAR} and
+		</if>
+		<if test="cartype != null and cartype != ''">
+			ci.cartype = #{cartype,jdbcType=VARCHAR} and
+		</if>
+		<if test="simid != null and simid != ''">
+			ci.simid like '%' || #{simid,jdbcType=VARCHAR} || '%' and
+		</if>
+		<if
+			test="begindate != null and begindate != '' and enddate != null and enddate != '' ">
+			to_char(ci.buydate,'YYYY-MM-DD') between
+			#{begindate,jdbcType=VARCHAR} and
+			#{enddate,jdbcType=VARCHAR} and
+		</if>
+		1=1 and (ca.status!='9' or ca.status is null) order by ci.carno
+	</select>
+
+	<!-- 根据id获取车辆信息 -->
+	<select id="getbyid"
+		resultType="com.cabletech.carmanager.entity.CarInfoEntity"
+		parameterType="java.lang.String" flushCache="true">
+		select
+		c.* from car_info c  where c.id=#{id}
+	</select>
+
+	<!-- 添加车辆信息 -->
+	<insert id="create"
+		parameterType="com.cabletech.carmanager.entity.CarInfoEntity">
+		insert into car_info ( id,carno,cartype,gpsno,gpscompany,
+		simid,regionid,mentor,contractorid,
+		phone,createdate,outputvolume,buydate,
+		oilwear,usestate,carstate,adduserid,status )
+		values( #{id,jdbcType=VARCHAR}, #{carno,jdbcType=VARCHAR},
+		#{cartype,jdbcType=VARCHAR}, #{gpsno,jdbcType=VARCHAR},
+		#{gpscompany,jdbcType=VARCHAR}, #{simid,jdbcType=VARCHAR},
+		#{regionid,jdbcType=VARCHAR}, #{mentor,jdbcType=VARCHAR},
+		#{contractorid,jdbcType=VARCHAR}, #{phone,jdbcType=VARCHAR},
+		sysdate, #{outputvolume,jdbcType=VARCHAR},
+		#{buydate,jdbcType=DATE},#{oilwear,jdbcType=NUMERIC},
+		'0',
+		#{carstate,jdbcType=VARCHAR}, #{adduserid,jdbcType=VARCHAR},
+		#{status,jdbcType=VARCHAR}
+		)
+	</insert>
+	<insert id="insertCarAssign" parameterType="com.cabletech.carmanager.entity.CarassignEntity" flushCache="true">
+		insert into car_assign (id,carid,userorgid,userdeptid,assignorgid,status,addorgid) 
+		values
+		(
+			#{id,jdbcType=VARCHAR},#{carid,jdbcType=VARCHAR},#{userorgid,jdbcType=VARCHAR},
+			#{userdeptid,jdbcType=VARCHAR},#{assignorgid,jdbcType=VARCHAR},
+			#{status,jdbcType=VARCHAR},#{addorgid,jdbcType=VARCHAR}
+		)
+	
+	</insert>
+	<!-- 取得车辆分配系统 -->
+	<select id="getCarAssignByCarId" resultType="string"
+		parameterType="string">
+		select id from car_assign where carid = #{carId,jdbcType=VARCHAR}
+	</select>
+
+	<!-- 保存车辆信息 -->
+	<update id="update"
+		parameterType="com.cabletech.carmanager.entity.CarInfoEntity">
+		update car_info set carno=#{carno,jdbcType=VARCHAR},
+		cartype=#{cartype,jdbcType=VARCHAR},
+		gpsno=#{gpsno,jdbcType=VARCHAR},
+		gpscompany=#{gpscompany,jdbcType=VARCHAR},
+		simid=#{simid,jdbcType=VARCHAR},
+		regionid=#{regionid,jdbcType=VARCHAR},
+		mentor=#{mentor,jdbcType=VARCHAR},
+		contractorid=#{contractorid,jdbcType=VARCHAR},
+		phone=#{phone,jdbcType=VARCHAR},		
+		outputvolume=#{outputvolume,jdbcType=VARCHAR},
+		buydate=#{buydate,jdbcType=DATE},
+		oilwear=#{oilwear,jdbcType=NUMERIC},		
+		carstate=#{carstate,jdbcType=VARCHAR}
+		
+		<!-- adduserid=#{adduserid,jdbcType=VARCHAR}, status=#{status,jdbcType=VARCHAR}  -->		
+		<!-- usestate=#{usestate,jdbcType=VARCHAR}, -->
+		<!-- createdate=#{createdate,jdbcType=DATE}, -->
+		where id =#{id,jdbcType=VARCHAR}
+	</update>
+
+	<!-- 根据ID删除车辆信息 -->
+	<update id="deleteCarInfoEntity" parameterType="java.lang.String">
+		update car_info set status ='9' where id = #{id,jdbcType=VARCHAR}
+	</update>
+
+	<delete id="deleteCarassignEntity" parameterType="java.lang.String">
+		update car_assign set status='9' where carid = #{id,jdbcType=VARCHAR}
+	</delete>
+	<!-- 根据车辆编号获取车辆的详细信息 -->
+	<select id="viewCarInfo" parameterType="string" resultType="hashmap">
+		SELECT ci.*,ca.USERORGID,ca.USERDEPTID,ca.ASSIGNORGID
+		FROM CAR_INFO ci
+		LEFT JOIN CAR_ASSIGN ca ON ci.ID=ca.CARID
+		WHERE ci.ID=#{carId,jdbcType=VARCHAR}
+	</select>
+	<!--更新汽车使用状态  -->
+	<update id="updateCarUser" parameterType="hashMap" >
+	update car_info set USESTATE=#{USESTATE,jdbcType=VARCHAR} where id=#{id,jdbcType=VARCHAR}
+	</update>
+	
+	<!-- 取得车辆SIM卡对应的车辆有没有 -->
+	<select id="isExistsSimId" resultType="int" parameterType="hashmap"	flushCache="true">
+		select count(1) from car_info where simid = #{simId} 
+		<if test="carId != null and carId != ''">
+			and  id != #{carId}
+		</if>
+	</select>
+	
+	<!-- 取得车辆车牌号对应的车辆有没有 -->
+	<select id="isExistsCarNo" resultType="int" parameterType="hashmap"	flushCache="true">
+		select count(1) from car_info where carno = #{carNo} 
+		<if test="carId != null and carId != ''">
+			and  id != #{carId}
+		</if>
+	</select>
+</mapper>

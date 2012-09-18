@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabletech.carapplydispatch.mapper.CarScheduleMapper">
+	<!-- 修改车辆调度自动发送短信状态 -->
+	<update id="updateCarScheduleSendState" parameterType="java.lang.String">
+		update
+		CAR_APPLY_DISPATCH set
+		IS_SENDED_SCHEDULE='1' where
+		id=#{id,jdbcType=VARCHAR}
+	</update>
+
+	<!-- 查询车速不为0且没有发送调度短信的车辆 -->
+	<select id="selectRunningCar" resultType="hashmap">
+		select
+		distinct ci.ID,ci.CARNO,ci.SIMID
+		from CAR_INFO ci,CAR_APPLY_DISPATCH
+		cad,HISTORYPOSITION_CAR hc
+		where ci.ID=cad.CAR_NO AND
+		cad.IS_SENDED_SCHEDULE='0' AND
+		ci.SIMID=hc.SIMID AND hc.SPEED>0 AND
+		TRUNC(hc.GPSTIME,'DD')=TRUNC(sysdate,'DD')
+	</select>
+
+	<!-- 查询车辆的调度任务信息 -->
+	<select id="selectCarScheduleTask" parameterType="java.lang.String"
+		resultType="hashmap">
+		<![CDATA[
+		select cad.ID,cad.ADISP_CODE,ci.PHONE,ci.SIMID
+		from CAR_APPLY_DISPATCH cad,CAR_INFO ci
+		where ci.ID=cad.CAR_NO
+		AND cad.DISP_STATE='1'
+		AND cad.USE_START_DATE<=sysdate
+		AND cad.USE_END_DATE>=sysdate
+		AND ci.ID=#{id,jdbcType=VARCHAR}
+		]]>
+	</select>
+</mapper>

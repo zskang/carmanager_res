@@ -1,0 +1,182 @@
+package com.cabletech.carapplydispatch.mapper;
+
+import java.util.List;
+import java.util.Map;
+
+import com.cabletech.carapplydispatch.entity.CarAndCardispatchEntity;
+import com.cabletech.carapplydispatch.entity.CarApplyDispatchEntity;
+
+/***
+ * 调度Mapper接口
+ * 
+ * @author 陆道伟 2012-6-20 创建
+ * 
+ */
+public interface CarApplyDispatchMapper {
+	/***
+	 * 通过条件得到调度列表
+	 * 
+	 * @param condition
+	 *            条件
+	 * @return Map<String,Object> 调度列表
+	 */
+	public Map<String, Object> selectCarApplyDispatch(
+			Map<String, Object> condition);
+
+	/***
+	 * 添加调度信息
+	 * 
+	 * @param applydispatchentity
+	 *            调度信息
+	 * @return
+	 */
+	public Integer insertCarApplyDispatch(
+			CarApplyDispatchEntity applydispatchentity);
+
+
+	/**
+	 * 修改审核时间
+	 * 
+	 * @param id
+	 * @return
+	 */
+	public Integer updateApprDate(String id);
+
+	/**
+	 * 获取调单号 前十天之内的
+	 * @param mps 查询参数
+	 * @return
+	 */
+	public String GeneralDispCode(Map<String, Object> mps);
+
+	/**
+	 * 发送短信给站长审核后 就将当前的调单号生成 写入数据库中。
+	 * 
+	 * @param mps 更新值Map
+	 * @return
+	 */
+	public Integer updateDispCode(Map<String, Object> mps);
+
+	/***
+	 * 添加调度信息-手机用户提交
+	 * 
+	 * @param applydispatchentity
+	 *            调度信息
+	 * @return
+	 */
+	public Integer insertCarApplyDispatchByMobile(
+			CarApplyDispatchEntity applydispatchentity);
+
+	/***
+	 * 得到申请人的手机号吗
+	 * 
+	 * @param userid 用户ID
+	 * @return
+	 */
+	public String selectPhoneById(String userid);
+
+	/***
+	 * 根据phone得到申请人的UserID 必须是代维人员
+	 * 
+	 * @param phone 电话号码
+	 * @return
+	 */
+	public String selectUserByPhone(String phone);
+
+	/**
+	 * 根据电话号码获取人员信息
+	 * 
+	 * @param phone
+	 *            电话号码
+	 * @return
+	 */
+	public List<Map<String, Object>> selectUserByPhone2(String phone);
+
+	/**
+	 * 得到空闲的车辆
+	 * @param mps 查询参数
+	 * @return
+	 */
+	@SuppressWarnings({ "rawtypes" })
+	public List<Map<String, String>> selectUnusedCar(Map<String, Object> mps);
+
+	/***
+	 * 通过调度id得到调度信息
+	 * 
+	 * @param id 调度单ID
+	 * @return
+	 */
+	public CarApplyDispatchEntity selectCarDispatchById(String id);
+
+	/***
+	 * 修改调度信息
+	 * 
+	 * @param entity
+	 *            调度信息实体
+	 * @return
+	 */
+	public Integer updateCarDispatch(CarApplyDispatchEntity entity);
+
+	/***
+	 * 修改车辆为空闲状态
+	 * 
+	 * @param carno 车辆ID
+	 * @return
+	 */
+	public Integer updateCarUnused(String carno);
+
+	/***
+	 * 得到已调度列表
+	 * 
+	 * @param condition 查询条件
+	 * @return
+	 */
+	public Map<String, Object> selectCarApplyDispatched(
+			Map<String, Object> condition);
+
+	/***
+	 * 通过已调度的信息id得到车辆以及调度的信息
+	 * 
+	 * @param id
+	 *            已调度的信息id
+	 * @return CarApplyDispatchEntity 车辆以及调度的信息
+	 */
+	public CarAndCardispatchEntity selectCarAndCarDispatche(String id);
+
+	/**
+	 * 
+	 * 根据调单号和当前时间范围十天之内获取到 调度实体信息
+	 * 
+	 * @param dispCode 参数
+	 * @return
+	 */
+	public CarApplyDispatchEntity selectCarDispatchByDispCode(String dispCode);
+
+	/**
+	 * 修改状态。
+	 * 
+	 * @param mp 修改参数Map
+	 * @return
+	 */
+	public int updateState(Map<String, Object> mp);
+
+	/**
+	 * 根据车id 获用车人号码
+	 * 
+	 * @param car_no 车辆ID
+	 * @return
+	 */
+	public String getCarManPhone(String car_no);
+
+	/**
+	 * 根据id 修改骑车使用状态。
+<<<<<<< .mine
+	 * 
+	 * @param car_no
+=======
+	 * @param car_no 车辆ID
+>>>>>>> .r36058
+	 * @return
+	 */
+	public int updCarUnusedById(String car_no);
+}

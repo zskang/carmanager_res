@@ -1,0 +1,226 @@
+package com.cabletech.carmanager.action;
+
+
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.struts2.convention.annotation.Action;
+import org.apache.struts2.convention.annotation.Namespace;
+import org.apache.struts2.convention.annotation.Result;
+import org.apache.struts2.convention.annotation.Results;
+
+import com.cabletech.baseinfo.business.entity.UserInfo;
+import com.cabletech.baseinfo.excel.ExportUtil;
+import com.cabletech.carmanager.entity.CarInfoEntity;
+import com.cabletech.carmanager.entity.CarassignEntity;
+import com.cabletech.carmanager.service.CarInfoService;
+import com.cabletech.core.action.BaseAction;
+/***
+ * 汽车控制action
+ * @author 陆道伟 2012-6-15
+ *
+ */
+
+@Namespace("/carinfo")
+
+@Results( {
+		@Result(name = "list", location = "/carmanager/carinfo-list.jsp"),
+		@Result(name = "toSave", location = "/carmanager/carinfo-add.jsp"),
+		@Result(name = "reload", location = "/carinfo/carinfoAction!list.action", type = "redirect"), 
+		@Result(name = "view", location = "/carmanager/carinfo-view.jsp")
+})
+@Action("carinfoAction")
+public class CarInfoAction extends BaseAction{
+	/**
+	 * 序列号
+	 */
+	private static final long serialVersionUID = -5032299411831033387L;
+	/***
+	 * 车辆事务类
+	 */
+	@Resource(name="carInfoServiceImpl")
+	private CarInfoService carInfoService;
+	
+	/***
+	 * 定义的汽车实体
+	 */
+	private CarInfoEntity entity;
+	@Override
+	public String execute() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	/***
+	 * 列表页面 
+	 * @return
+	 * @throws Exception
+	 */
+	public String list()throws  Exception{
+		Map<String,Object> map=conInit();
+		ExportUtil.intExportParameters(this.request, map);//EXCEL导出查询参数
+		Map<String,Object>carList=carInfoService.queryPageMap("getbymap",
+				map,super.getPage("page"), super.getLimit("rows"));
+		request.setAttribute("condition", map);
+		request.setAttribute("map", carList);
+		revealTipMessage("carDeal");//取出信息用于前台获取（列表或查看页）
+		return LIST;
+	}
+	
+	
+	
+	/***
+	 *    修改汽车信息
+	 * @return
+	 * @throws Exception
+	 */
+	public String update()throws Exception{		
+		carInfoService.update(entity, super.getUser());
+		setTipMessage("carDeal","车辆修改成功");//设置提示信息(操作的方法)
+		return RELOAD;
+	}
+	
+	/***
+	 * 跳转到添加或者修改页面
+	 * @return
+	 * @throws Exception
+	 */
+	public String toSave() throws Exception{
+		String id=request.getParameter("id");
+		if(id!=null&&!id.equals("")){
+			prepareSaveModel();
+			entity=carInfoService.getbyid(id);
+			request.setAttribute("entity", entity);
+		}
+		request.setAttribute("id", id);
+		return "toSave";
+	}
+	
+	
+	/***
+	 * 删除车辆信息
+	 * @return
+	 * @throws Exception
+	 */
+	public String delete()throws Exception{
+		String id=request.getParameter("id");
+		carInfoService.deleteCarassignEntity(id);
+		carInfoService.deleteCarInfoEntity(id);
+		setTipMessage("carDeal","车辆删除成功");//设置提示信息(操作的方法)
+		return RELOAD;
+	}
+	
+	/***
+	 * 添加车辆信息
+	 * @return
+	 * @throws Exception
+	 */
+	public String save()throws Exception{
+		UserInfo user=super.getUser();		
+		carInfoService.create(entity, user);		
+		setTipMessage("carDeal","车辆添加成功");//设置提示信息(操作的方法)
+		return RELOAD;
+	}
+	
+	
+	
+	/**
+	 * 进入查看车辆详细信息页面
+	 * 
+	 * @return String
+	 */
+	public String view() {
+		String carId = request.getParameter("carId");
+		Map<String, Object> map = carInfoService.viewCarInfo(carId);
+		request.setAttribute("entity", map);
+		return VIEW;
+	}
+	
+	@Override
+	public Object getModel() {
+		return entity;
+	}
+
+	@Override
+	protected void prepareSaveModel() throws Exception {
+		if (entity == null) {
+			entity = new CarInfoEntity();
+		}
+		
+	}
+	
+	/**
+	 * update前执行
+	 * @throws Exception
+	 */
+	public void prepareUpdate() throws Exception {
+		if (entity == null) {
+			entity = new CarInfoEntity();
+		}
+	}
+
+	@Override
+	protected void prepareViewModel() throws Exception {
+		String id = request.getParameter("id");
+		if (StringUtils.isNotBlank(id)) {
+			entity = carInfoService.getbyid(id);
+			request.setAttribute("vo", entity);
+		} else {
+			entity = new CarInfoEntity();
+		}
+	}
+	
+	/***
+	 * 页面中查询的条件 ，
+	 * 组装成map
+	 * @return
+	 */
+	private Map<String, Object> conInit() {
+		UserInfo user=super.getUser();
+		Map<String, Object> map = new HashMap<String, Object>();
+		StringBuffer queryString =new StringBuffer();
+		processParamValue(map,queryString,"carno");
+		processParamValue(map,queryString,"cartype");
+		processParamValue(map,queryString,"simid");
+		processParamValue(map,queryString,"mentor");
+		processParamValue(map,queryString,"contractorid");
+		processParamValue(map,queryString,"carstate");
+		map.put("querystring", queryString);
+		if(user.isMobile())//移动公司
+			map.put("regionList", super.baseInfoProvider.getRegionService().searchAllChildren(user.getRegionId()));
+		if(user.isContractor())//租赁公司
+			map.put("contractorList", super.baseInfoProvider.getOrgService().searchAllChildren(user.getOrgId()));	
+		return map;
+	}
+	
+	/**
+	 * 将request中的参数值放入查询条件Map，并构建查询QueryUri
+	 * 
+	 * @param map
+	 *            Map<String, Object> 查询条件Map
+	 * @param queryString
+	 *            StringBuffer 查询条件的queryUri
+	 * @param key
+	 *            String 参数
+	 */
+	private void processParamValue(Map<String, Object> map,
+			StringBuffer queryString, String key) {
+		String value = request.getParameter(key);
+		map.put(key, value);
+		if (StringUtils.isNotBlank(value)) {
+			queryString.append("&" + key + "=" + value);
+		}
+	}
+
+	public CarInfoEntity getEntity() {
+		return entity;
+	}
+
+	public void setEntity(CarInfoEntity entity) {
+		this.entity = entity;
+	}
+
+}

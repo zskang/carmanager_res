@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-module
+  type="WEB"
+  name="CarManager-RES"
+  id="myeclipse.1346384957209"
+  context-root="/CarManager-RES"
+  j2ee-spec="6.0"
+  archive="CarManager-RES.war">
+  <attributes>
+    <attribute name="webrootdir" value="WebApp" />
+  </attributes>
+</project-module>
+

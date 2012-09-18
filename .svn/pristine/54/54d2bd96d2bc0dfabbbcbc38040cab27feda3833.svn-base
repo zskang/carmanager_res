@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BASEINFOCLIENT 统一属性配置 -->
+<items>
+    <export>
+    	<excel key="carinfos" name="车辆信息列表" dataService="carInfoServiceImpl">
+    		<column name="车牌号" datakey="CARNO" ></column>
+    		<column name="车型" datakey="CARTYPE" fetchmap="select t.lable from view_sysdictionary t where t.columntype = 'CARTYPE' and t.codevalue = ?"></column>
+    		<column name="司机" datakey="MENTOR" ></column>
+    		<column name="司机电话" datakey="PHONE" ></column>
+    		<column name="车载SIM卡" datakey="SIMID" ></column>
+    		<column name="标准油耗 " datakey="OILWEAR"></column>
+    		<column name="所属公司  " datakey="CONTRACTORID" fetchmap="select t.NAME from view_org t where t.ID = ?"></column>
+    	 </excel>
+    </export>
+</items>
+
+  
+  
+ 
+ 
+ 
+ 

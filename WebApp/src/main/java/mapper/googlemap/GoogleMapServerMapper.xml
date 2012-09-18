@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cabletech.googlemap.mapper.GoogleMapServerMapper">
+	<select id="getCarInfo" parameterType="hashmap" resultType="hashmap">
+		
+	</select>
+	<select id="getHistoryPositions" parameterType="hashmap" resultType="hashmap">
+		select h.lon x,h.lat y from historyposition_car h
+		where h.simid=#{simid,jdbcType=VARCHAR} and h.activetime
+		between to_date(#{begin,jdbcType=VARCHAR},'yyyy/mm/dd HH24:mi:ss')
+		and to_date(#{end,jdbcType=VARCHAR},'yyyy/mm/dd HH24:mi:ss')
+		order by h.activetime
+	</select>
+	<select id="searchCars" parameterType="hashmap" resultType="hashmap">
+		select l.mentor,l.phone,l.carno,l.simid,to_char(o.activetime,'yyyy/mm/dd HH24:mi:ss')activetime, 
+		STR_TO_GEO_POINT_XJ(o.coordinate).sdo_point.X x, STR_TO_GEO_POINT_XJ(o.coordinate).sdo_point.Y y, 
+		c.id contractorid,c.name contractorname,l.cartype
+		from onlineman o ,car_info l,view_orguser c 
+		where o.simid=l.simid and c.id=l.contractorid and c.objtype='ORG' 
+		 <if test="selectlist == 0">
+		 	<if test="genlu == 1">
+		 	 and to_char(o.activetime,'yyyy/mm/dd') = #{date,jdbcType=VARCHAR}
+		 	</if>
+		 	<if test="genlu == 2">
+		 		<![CDATA[
+		 			and to_char(o.activetime,'yyyy/mm/dd') < #{date,jdbcType=VARCHAR}
+		 		]]>
+		 	</if>
+		 </if>
+		 <if test="selectlist == 1">
+		  and l.mentor like #{mentor,jdbcType=VARCHAR}
+		  and l.phone like #{phone,jdbcType=VARCHAR}
+		  and l.carno like #{carno,jdbcType=VARCHAR}			 
+		 </if>
+	</select>
+	<select id="getMentors" parameterType="hashmap" resultType="hashmap">
+		select distinct mentor name from car_info where mentor is not null 
+	</select>
+	<select id="getPositionAndDisplay" parameterType="hashmap" resultType="hashmap">
+		select rownum row_num,lp.simid,c.id contractorid,c.name contractorname,
+		lp.mentor,lp.phone,lp.id,lp.carno,bs.lable cartype, 
+		STR_TO_GEO_POINT_XJ(o.coordinate).sdo_point.X x,
+		STR_TO_GEO_POINT_XJ(o.coordinate).sdo_point.Y y,
+		to_char(o.activetime,'yyyy/mm/dd HH24:mi:ss')activetime
+		from onlineman o,view_orguser c,car_info lp,base_sysdictionary bs
+		where o.simid=lp.simid and c.id=lp.contractorid and c.objtype='ORG'
+		and bs.codevalue=lp.cartype and bs.columntype='CARTYPE' 
+		<if test="simid != null">
+			and lp.simid=#{simid,jdbcType=VARCHAR} 
+		</if>
+		order by o.activetime		
+	</select>
+	<select id="getLocus" parameterType="hashmap" resultType="hashmap">
+		select h.lon x,h.lat y from historyposition_car h
+		 where h.simid=#{simid, jdbcType=VARCHAR}
+		 order by h.activetime
+	</select>
+	<select id="getRegions" parameterType="hashmap" resultType="hashmap">
+		select * from view_region start with regionid=#{regionid} connect by prior regionid=parentid
+	</select>
+	<select id="getOnlineCarsInfo" parameterType="hashmap" resultType="hashmap">
+		select * from (select rownum row_num,lp.simid,c.id contractorid,c.name contractorname,lp.id,lp.carno,bs.lable cartype,
+         STR_TO_GEO_POINT_XJ(o.coordinate).sdo_point.X x,STR_TO_GEO_POINT_XJ(o.coordinate).sdo_point.Y y,
+         to_char(o.activetime,'yyyy/mm/dd HH24:mi:ss')activetime
+         from onlineman o,view_orguser c,car_info lp,base_sysdictionary bs
+         where o.simid=lp.simid and c.id=lp.contractorid and to_char(o.activetime,'yyyy/mm/dd')=#{begindate,jdbcType=DATE}
+         and bs.codevalue=lp.cartype and bs.columntype='CARTYPE'
+         <if test="regionid != null or regionid != ''">
+         	 and lp.regionid=#{regionid,jdbcType=VARCHAR}
+         </if>
+         order by o.activetime asc) a  where a.row_num between #{start,jdbcType=INTEGER} and #{end,jdbcType=INTEGER}
+	</select>	
+	
+</mapper>
